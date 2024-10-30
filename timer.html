@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Timer</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+
+   <style>
+        body {
+            background-color: #f0f4f8;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            max-width: 600px;
+            margin-top: 50px;
+        }
+        .task-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 10px 0;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .task-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .timer-controls {
+            display: flex;
+            align-items: center;
+        }
+        .timer-controls i {
+            font-size: 1.5rem;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+        .add-task-btn {
+            font-size: 2rem;
+            color: #007bff;
+            cursor: pointer;
+        }
+        .modal-content {
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .modal-title {
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 class="text-center mb-4">Task Timer</h2>
+    <div id="tasks-container">
+        <!-- Task items will be dynamically added here -->
+    </div>
+    <div class="text-center mt-3">
+        <i class="fas fa-plus-circle add-task-btn" data-toggle="modal" data-target="#addTaskModal"></i>
+    </div>
+</div>
+
+<!-- Add Task Modal -->
+<div class="modal fade" id="addTaskModal" tabindex="-1" aria-labelledby="addTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <h5 class="modal-title" id="addTaskModalLabel">Add New Task</h5>
+            <div class="modal-body">
+                <form id="addTaskForm">
+                    <div class="form-group">
+                        <label for="taskTitle">Task Title</label>
+                        <input type="text" class="form-control" id="taskTitle" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskTime">Time (in minutes)</label>
+                        <input type="number" class="form-control" id="taskTime" required>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="addTask()">Add Task</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let taskId = 1;
+    const timers = {};
+
+    function addTask() {
+        const taskTitle = document.getElementById('taskTitle').value;
+        let taskTime = parseInt(document.getElementById('taskTime').value) * 60; // convert minutes to seconds
+
+        if (!taskTitle || !taskTime) return;
+
+        const taskContainer = document.getElementById('tasks-container');
+        
+        const taskDiv = document.createElement('div');
+        taskDiv.classList.add('task-item');
+        taskDiv.id = `task-${taskId}`;
+        taskDiv.innerHTML = `
+            <span class="task-title">${taskTitle}</span>
+            <div class="timer-controls">
+                <span id="timer-${taskId}" class="task-timer">${formatTime(taskTime)}</span>
+                <i class="fas fa-play-circle text-success" id="startStop-${taskId}" onclick="toggleTimer(${taskId}, ${taskTime})"></i>
+                <i class="fas fa-redo-alt text-warning" onclick="resetTimer(${taskId}, ${taskTime})"></i>
+            </div>
+        `;
+
+        taskContainer.appendChild(taskDiv);
+        timers[taskId] = { interval: null, timeLeft: taskTime, isRunning: false };
+        taskId++;
+
+        // Close modal and reset form
+        $('#addTaskModal').modal('hide');
+        document.getElementById('addTaskForm').reset();
+    }
+
+    function toggleTimer(id, originalTime) {
+        const timer = timers[id];
+        const startStopIcon = document.getElementById(`startStop-${id}`);
+
+        if (!timer.isRunning) {
+            // Start the timer
+            timer.isRunning = true;
+            startStopIcon.classList.replace('fa-play-circle', 'fa-pause-circle');
+            
+            if (!timer.timeLeft) timer.timeLeft = originalTime; // Set time if reset
+
+            timer.interval = setInterval(() => {
+                timer.timeLeft--;
+                document.getElementById(`timer-${id}`).textContent = formatTime(timer.timeLeft);
+
+                if (timer.timeLeft <= 0) {
+                    clearInterval(timer.interval);
+                    timer.isRunning = false;
+                    startStopIcon.classList.replace('fa-pause-circle', 'fa-play-circle');
+                    alert(`Time is up for the task!`);
+                }
+            }, 1000);
+        } else {
+            // Stop the timer
+            timer.isRunning = false;
+            clearInterval(timer.interval);
+            startStopIcon.classList.replace('fa-pause-circle', 'fa-play-circle');
+        }
+    }
+
+    function resetTimer(id, originalTime) {
+        const timer = timers[id];
+        timer.isRunning = false;
+        clearInterval(timer.interval);
+        timer.timeLeft = originalTime;
+
+        document.getElementById(`timer-${id}`).textContent = formatTime(originalTime);
+        document.getElementById(`startStop-${id}`).classList.replace('fa-pause-circle', 'fa-play-circle');
+    }
+
+    function formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+    }
+    if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/service-worker.js')
+      .then((registration) => {
+        console.log('Service Worker registered with scope:', registration.scope);
+      })
+      .catch((error) => {
+        console.log('Service Worker registration failed:', error);
+      });
+  }
+</script>
+
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.4.4/dist/umd/popper.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+</body>
+</html>
